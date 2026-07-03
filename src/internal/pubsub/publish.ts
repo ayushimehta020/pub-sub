@@ -1,0 +1,13 @@
+import type { ConfirmChannel } from "amqplib";
+
+export function publishJSON<T>(
+  ch: ConfirmChannel,
+  exchange: string,
+  routingKey: string,
+  value: T,
+): void {
+  const buffer = Buffer.from(JSON.stringify(value));
+  ch.publish(exchange, routingKey, buffer, {
+    contentType: "application/json",
+  });
+}
