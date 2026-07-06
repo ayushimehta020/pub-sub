@@ -11,7 +11,7 @@ export async function declareAndBind(
   queueName: string,
   key: string,
   queueType: SimpleQueueType,
-) {
+): Promise<[amqp.Channel, amqp.Replies.AssertQueue]> {
   const channel = await conn.createChannel();
   const queue = await channel.assertQueue(queueName, {
     durable: queueType === SimpleQueueType.Durable,

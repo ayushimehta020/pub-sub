@@ -1,8 +1,13 @@
 import amqp from "amqplib";
 import type { ConfirmChannel } from "amqplib";
 import { publishJSON } from "../internal/pubsub/publish.js";
-import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
+import {
+  ExchangePerilDirect,
+  ExchangePerilTopic,
+  PauseKey,
+} from "../internal/routing/routing.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
+import { declareAndBind, SimpleQueueType } from "../internal/pubsub/consume.js";
 
 async function main() {
   console.log("Starting Peril server...");
@@ -11,6 +16,14 @@ async function main() {
   console.log("Connected to RabbitMQ!");
 
   const confirmChannel: ConfirmChannel = await conn.createConfirmChannel();
+
+  const [channel, queue] = await declareAndBind(
+    conn,
+    ExchangePerilTopic,
+    "game_logs",
+    "game_logs.*",
+    SimpleQueueType.Durable,
+  );
 
   process.on("SIGINT", async () => {
     console.log("Shutting down...");
