@@ -1,4 +1,5 @@
 import amqp from "amqplib";
+import type { ConfirmChannel } from "amqplib";
 import {
   clientWelcome,
   commandStatus,
@@ -9,11 +10,18 @@ import {
 import type { PlayingState } from "../internal/gamelogic/gamestate.js";
 import { GameState } from "../internal/gamelogic/gamestate.js";
 import { declareAndBind, SimpleQueueType } from "../internal/pubsub/consume.js";
-import { ExchangePerilDirect, PauseKey } from "../internal/routing/routing.js";
+import {
+  ArmyMovesPrefix,
+  ExchangePerilDirect,
+  ExchangePerilTopic,
+  PauseKey,
+} from "../internal/routing/routing.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
-import { commandMove } from "../internal/gamelogic/move.js";
+import { commandMove, handleMove } from "../internal/gamelogic/move.js";
 import { subscribeJSON } from "../internal/pubsub/subscribe.js";
-import { handlerPause } from "./handlers.js";
+import { handlerMove, handlerPause } from "./handlers.js";
+import type { ArmyMove } from "../internal/gamelogic/gamedata.js";
+import { publishJSON } from "../internal/pubsub/publish.js";
 
 async function main() {
   console.log("Starting Peril client...");
@@ -30,6 +38,8 @@ async function main() {
     PauseKey,
     SimpleQueueType.Transient,
   );
+
+  const confirmChannel: ConfirmChannel = await conn.createConfirmChannel();
 
   process.on("SIGINT", async () => {
     console.log("Shutting down...");
@@ -51,6 +61,15 @@ async function main() {
     handlerPause(gs),
   );
 
+  await subscribeJSON<ArmyMove>(
+    conn,
+    ExchangePerilTopic,
+    `army_moves.${username}`,
+    `${ArmyMovesPrefix}.*`,
+    SimpleQueueType.Transient,
+    handlerMove(gs),
+  );
+
   clientLoop: while (true) {
     const words = await getInput();
 
@@ -63,9 +82,16 @@ async function main() {
         commandSpawn(gs, words);
         break;
       case "move":
-        if (commandMove(gs, words)) {
-          console.log("Move successful!");
-        }
+        const move = commandMove(gs, words);
+
+        publishJSON(
+          confirmChannel,
+          ExchangePerilTopic,
+          `${ArmyMovesPrefix}.${username}`,
+          move,
+        );
+        console.log("Move published successfully!");
+
         break;
       case "status":
         await commandStatus(gs);
