@@ -15,12 +15,16 @@ import {
   ExchangePerilDirect,
   ExchangePerilTopic,
   PauseKey,
+  WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
 import { commandSpawn } from "../internal/gamelogic/spawn.js";
 import { commandMove, handleMove } from "../internal/gamelogic/move.js";
 import { subscribeJSON } from "../internal/pubsub/subscribe.js";
-import { handlerMove, handlerPause } from "./handlers.js";
-import type { ArmyMove } from "../internal/gamelogic/gamedata.js";
+import { handlerMove, handlerPause, handlerWar } from "./handlers.js";
+import type {
+  ArmyMove,
+  RecognitionOfWar,
+} from "../internal/gamelogic/gamedata.js";
 import { publishJSON } from "../internal/pubsub/publish.js";
 
 async function main() {
@@ -67,7 +71,16 @@ async function main() {
     `army_moves.${username}`,
     `${ArmyMovesPrefix}.*`,
     SimpleQueueType.Transient,
-    handlerMove(gs),
+    handlerMove(gs, confirmChannel),
+  );
+
+  await subscribeJSON<RecognitionOfWar>(
+    conn,
+    ExchangePerilTopic,
+    "war",
+    `${WarRecognitionsPrefix}.*`,
+    SimpleQueueType.Durable,
+    handlerWar(gs),
   );
 
   clientLoop: while (true) {
