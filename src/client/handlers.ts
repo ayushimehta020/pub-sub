@@ -16,6 +16,7 @@ import {
   ExchangePerilTopic,
   WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
+import { publishGameLog } from "./index.js";
 
 export function handlerPause(gs: GameState): (ps: PlayingState) => AckType {
   return (ps: PlayingState): AckType => {
@@ -63,6 +64,7 @@ export function handlerMove(
 
 export function handlerWar(
   gs: GameState,
+  confirmChannel: ConfirmChannel,
 ): (rw: RecognitionOfWar) => Promise<AckType> {
   return async (rw: RecognitionOfWar): Promise<AckType> => {
     const resolution = handleWar(gs, rw);
@@ -75,8 +77,29 @@ export function handlerWar(
         return AckType.NackDiscard;
       case WarOutcome.OpponentWon:
       case WarOutcome.YouWon:
+        try {
+          await publishGameLog(
+            confirmChannel,
+            gs.getUsername(),
+            `${resolution.winner} won a war against ${resolution.loser}`,
+          );
+          return AckType.Ack;
+        } catch (err) {
+          console.log("Failed to publish game log:", err);
+          return AckType.NackRequeue;
+        }
       case WarOutcome.Draw:
-        return AckType.Ack;
+        try {
+          await publishGameLog(
+            confirmChannel,
+            gs.getUsername(),
+            `A war between ${rw.attacker} and ${rw.defender} resulted in a draw`,
+          );
+          return AckType.Ack;
+        } catch (err) {
+          console.log("Failed to publish game log:", err);
+          return AckType.NackRequeue;
+        }
       default:
         console.log("Unknown war outcome:", resolution);
         return AckType.NackDiscard;

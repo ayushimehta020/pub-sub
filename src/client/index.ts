@@ -14,6 +14,7 @@ import {
   ArmyMovesPrefix,
   ExchangePerilDirect,
   ExchangePerilTopic,
+  GameLogSlug,
   PauseKey,
   WarRecognitionsPrefix,
 } from "../internal/routing/routing.js";
@@ -25,7 +26,8 @@ import type {
   ArmyMove,
   RecognitionOfWar,
 } from "../internal/gamelogic/gamedata.js";
-import { publishJSON } from "../internal/pubsub/publish.js";
+import { publishJSON, publishMsgPack } from "../internal/pubsub/publish.js";
+import type { GameLog } from "../internal/gamelogic/logs.js";
 
 async function main() {
   console.log("Starting Peril client...");
@@ -80,7 +82,7 @@ async function main() {
     "war",
     `${WarRecognitionsPrefix}.*`,
     SimpleQueueType.Durable,
-    handlerWar(gs),
+    handlerWar(gs, confirmChannel),
   );
 
   clientLoop: while (true) {
@@ -123,6 +125,25 @@ async function main() {
         continue;
     }
   }
+}
+
+export async function publishGameLog(
+  ch: ConfirmChannel,
+  username: string,
+  message: string,
+) {
+  const gameLog: GameLog = {
+    currentTime: new Date(),
+    message: message,
+    username: username,
+  };
+
+  await publishMsgPack(
+    ch,
+    ExchangePerilTopic,
+    `${GameLogSlug}.${username}`,
+    gameLog,
+  );
 }
 
 main().catch((err) => {
