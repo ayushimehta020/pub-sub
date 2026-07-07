@@ -41,13 +41,19 @@ export function handlerMove(
           attacker: move.player,
           defender: gs.getPlayerSnap(),
         };
-        publishJSON(
-          confirmChannel,
-          ExchangePerilTopic,
-          `${WarRecognitionsPrefix}.${gs.getUsername()}`,
-          rw,
-        );
-        return AckType.NackRequeue;
+        try {
+          publishJSON(
+            confirmChannel,
+            ExchangePerilTopic,
+            `${WarRecognitionsPrefix}.${gs.getUsername()}`,
+            rw,
+          );
+        } catch (err) {
+          console.log("Failed to publish war declaration:", err);
+          return AckType.NackRequeue;
+        }
+
+        return AckType.Ack;
       case MoveOutcome.SamePlayer:
       default:
         return AckType.NackDiscard;
