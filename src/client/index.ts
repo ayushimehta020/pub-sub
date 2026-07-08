@@ -28,6 +28,7 @@ import type {
 } from "../internal/gamelogic/gamedata.js";
 import { publishJSON, publishMsgPack } from "../internal/pubsub/publish.js";
 import type { GameLog } from "../internal/gamelogic/logs.js";
+import { commandSpam } from "../internal/gamelogic/spam.js";
 
 async function main() {
   console.log("Starting Peril client...");
@@ -115,7 +116,7 @@ async function main() {
         printClientHelp();
         break;
       case "spam":
-        console.log("Spamming not allowed yet!");
+        await commandSpam(confirmChannel, username, words);
         break;
       case "quit":
         printQuit();

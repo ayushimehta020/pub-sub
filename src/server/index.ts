@@ -28,8 +28,8 @@ async function main() {
     GameLogSlug,
     `${GameLogSlug}.*`,
     SimpleQueueType.Durable,
-    (data: GameLog): AckType => {
-      writeLog(data);
+    async (data: GameLog): Promise<AckType> => {
+      await writeLog(data);
       process.stdout.write("> ");
       return AckType.Ack;
     },
