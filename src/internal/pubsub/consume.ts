@@ -1,4 +1,5 @@
 import amqp from "amqplib";
+import type { ConfirmChannel } from "amqplib";
 
 export enum SimpleQueueType {
   Durable,

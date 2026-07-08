@@ -5,9 +5,14 @@ import {
   ExchangePerilDirect,
   ExchangePerilTopic,
   PauseKey,
+  GameLogSlug,
 } from "../internal/routing/routing.js";
 import { getInput, printServerHelp } from "../internal/gamelogic/gamelogic.js";
 import { declareAndBind, SimpleQueueType } from "../internal/pubsub/consume.js";
+import { subscribeMsgPack } from "../internal/pubsub/subscribe.js";
+import { AckType } from "../internal/pubsub/subscribe.js";
+import { writeLog } from "../internal/gamelogic/logs.js";
+import type { GameLog } from "../internal/gamelogic/logs.js";
 
 async function main() {
   console.log("Starting Peril server...");
@@ -17,12 +22,17 @@ async function main() {
 
   const confirmChannel: ConfirmChannel = await conn.createConfirmChannel();
 
-  const [channel, queue] = await declareAndBind(
+  await subscribeMsgPack(
     conn,
     ExchangePerilTopic,
-    "game_logs",
-    "game_logs.*",
+    GameLogSlug,
+    `${GameLogSlug}.*`,
     SimpleQueueType.Durable,
+    (data: GameLog): AckType => {
+      writeLog(data);
+      process.stdout.write("> ");
+      return AckType.Ack;
+    },
   );
 
   process.on("SIGINT", async () => {

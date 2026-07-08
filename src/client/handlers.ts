@@ -93,7 +93,7 @@ export function handlerWar(
           await publishGameLog(
             confirmChannel,
             gs.getUsername(),
-            `A war between ${rw.attacker} and ${rw.defender} resulted in a draw`,
+            `A war between ${rw.attacker.username} and ${rw.defender.username} resulted in a draw`,
           );
           return AckType.Ack;
         } catch (err) {
